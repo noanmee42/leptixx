@@ -1,2 +1,2 @@
 # LEPTIXX
-The CLI tool for detecting AI hallucinations written in Rust and Python
+The CLI tool for detecting AI hallucinations written in Go and Python
