@@ -1,19 +1,20 @@
-# python/claim_extractor.py
-
 import os
 import logging
 from typing import List
 
+# Импортируем библиотеку и её типы данных
 import langextract as lx
+import langextract.data 
 
+# Настройка логирования, чтобы видеть ошибки в консоли
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 class ClaimExtractor:
-    """Извлечение утверждений из текста через langextract + Gemini"""
+    """Извлечение утверждений через langextract"""
     
     def __init__(self, api_key: str = None):
-        # Поддержка разных способов передачи ключа
+        # 1. Пытаемся взять ключ из аргумента или из системы
         self.api_key = (
             api_key or 
             os.getenv('GEMINI_API_KEY') or 
@@ -21,14 +22,7 @@ class ClaimExtractor:
         )
         
         if not self.api_key:
-            raise ValueError(
-                "❌ API ключ не найден!\n\n"
-                "Способы указать ключ:\n"
-                "1. Передайте в конструктор: ClaimExtractor(api_key='ваш_ключ')\n"
-                "2. Создайте файл .env с: GEMINI_API_KEY=ваш_ключ\n"
-                "3. Установите переменную: export GEMINI_API_KEY=ваш_ключ\n\n"
-                "🔑 Получите ключ на: https://aistudio.google.com/app/apikey"
-            )
+            raise ValueError("❌ API ключ не найден! Вставьте его в код или установите переменную окружения.")
         
         logger.info("✓ ClaimExtractor готов")
     
@@ -36,61 +30,82 @@ class ClaimExtractor:
         """Извлекает утверждения из текста"""
         
         prompt = """
-        Извлеки все проверяемые утверждения из текста.
-        Разбей сложные предложения на простые факты.
-        Игнорируй вопросы.
+        Extract all verifiable claims and facts from the text.
+        Split complex sentences into simple facts.
         """
         
+        # Примеры ОБЯЗАТЕЛЬНО через спец. классы, иначе будет ошибка 'dict' object
         examples = [
-            {
-                "input": "Москва - столица России с населением 12 млн человек.",
-                "output": [
-                    {"claim": "Москва является столицей России"},
-                    {"claim": "Население Москвы составляет 12 миллионов человек"}
+            lx.data.ExampleData(
+                text="Moscow is the capital of Russia with 12 million people.",
+                extractions=[
+                    lx.data.Extraction(
+                        extraction_class="claim",
+                        extraction_text="Moscow is the capital of Russia",
+                        attributes={"fact": "Moscow is the capital of Russia"}
+                    ),
+                    lx.data.Extraction(
+                        extraction_class="claim",
+                        extraction_text="12 million people",
+                        attributes={"fact": "Population of Moscow is 12 million"}
+                    )
                 ]
-            }
+            )
         ]
         
-        result = lx.extract(
-            text_or_documents=text,
-            prompt_description=prompt,
-            examples=examples,
-            model_id="gemini-2.5-flash",
-            api_key=self.api_key  # langextract сам работает с новым API
-        )
-
-        # Debugging: Print the structure of the result
-        print("DEBUG: Result structure:", result)
-        
-        # Парсим результат
-        claims = []
         try:
-            if isinstance(result, dict) and 'extractions' in result:
-                claims = [e.get('extraction_text', '').strip() for e in result['extractions'] if 'extraction_text' in e]
-            elif isinstance(result, list):
-                claims = [item.get('extraction_text', '').strip() if isinstance(item, dict) else str(item) for item in result]
-            else:
-                logger.error("Unexpected result structure: %s", result)
-                claims = []
+            # Вызов библиотеки
+            # Она может вернуть либо один объект AnnotatedDocument, либо список
+            results = lx.extract(
+                text_or_documents=text,
+                prompt_description=prompt,
+                examples=examples,
+                model_id="gemini-3-flash-preview", 
+                api_key=self.api_key
+            )
+            
+            claims = []
+
+            # Проверяем: если это не список, а один объект (AnnotatedDocument)
+            # делаем его списком, чтобы наш код ниже сработал в обоих случаях
+            if not isinstance(results, (list, tuple)) and not hasattr(results, '__iter__'):
+                results = [results]
+
+            for res in results:
+                # В объекте AnnotatedDocument извлечения лежат в поле extractions
+                if hasattr(res, 'extractions') and res.extractions:
+                    for item in res.extractions:
+                        # Берем факт из атрибутов или сам текст извлечения
+                        val = None
+                        if item.attributes and 'fact' in item.attributes:
+                            val = item.attributes['fact']
+                        else:
+                            val = item.extraction_text
+                        
+                        if val:
+                            claims.append(val)
+            
+            return list(set(claims))
+
         except Exception as e:
-            logger.error(f"Error parsing extraction result: {e}")
-            raise
-        
-        return [c for c in claims if c and len(c) >= 10]
+            logger.error(f"Ошибка при работе LangExtract: {e}")
+            return []
 
-
-# Быстрая функция
+# Функция для быстрого вызова
 def extract_claims(text: str, api_key: str = None) -> List[str]:
     return ClaimExtractor(api_key).extract(text)
 
-
 if __name__ == "__main__":
-    # Тест
+    # Теперь здесь не нужен load_dotenv()
     extractor = ClaimExtractor()
     
-    text = "Москва - столица России. Население более 12 миллионов."
-    claims = extractor.extract(text)
+    test_text = "Japan is an island country in East Asia. Its capital is Tokyo."
+    print(f"--- Анализ текста ---\n{test_text}\n")
     
-    print(f"✓ Извлечено {len(claims)} утверждений:")
-    for i, claim in enumerate(claims, 1):
-        print(f"{i}. {claim}")
+    try:
+        res = extractor.extract(test_text)
+        print(f"✓ Найдено {len(res)} фактов:")
+        for i, c in enumerate(res, 1):
+            print(f"{i}. {c}")
+    except Exception as e:
+        print(f"💥 Критическая ошибка: {e}")
