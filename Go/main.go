@@ -7,12 +7,54 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/muesli/termenv"
 )
 
 func main() {
+	// Проверяем — может Python уже запущен
+	client := NewPythonClient("http://localhost:8000")
+	if client.HealthCheck() != nil {
+		// Не запущен — стартуем сами
+		fmt.Println("  🐍 Запуск Python API...")
+
+		workDir, _ := os.Getwd()
+		pythonScript := filepath.Join(workDir, "Python", "app.py")
+		fmt.Println("  🐛 Путь к Python:", pythonScript)
+		fmt.Println("  🐛 Путь к Python:", pythonScript) // <- добавь
+		cmd := exec.Command("python", pythonScript)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Start(); err != nil {
+			fmt.Println("  ❌ Не удалось запустить Python:")
+			fmt.Println("     ", err)
+			fmt.Println("  💡 Запустите вручную: cd Python && python app.py")
+		} else {
+			// Ждём пока поднимется — максимум 60 секунд
+			started := false
+			for i := 0; i < 60; i++ {
+				time.Sleep(1 * time.Second)
+				if client.HealthCheck() == nil {
+					started = true
+					break
+				}
+			}
+
+			if started {
+				fmt.Println("  ✅ Python API готов!")
+				// Убиваем Python при выходе
+				defer cmd.Process.Kill()
+			} else {
+				fmt.Println("  ❌ Python API не запустился за 60 секунд")
+				cmd.Process.Kill()
+			}
+		}
+	}
 	p := termenv.ColorProfile()
 
 	colorPrompt := p.Color("#00BFFF")
