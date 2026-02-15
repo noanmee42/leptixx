@@ -10,32 +10,31 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/muesli/termenv"
 )
 
 func main() {
-	// Проверяем — может Python уже запущен
 	client := NewPythonClient("http://localhost:8000")
 	if client.HealthCheck() != nil {
-		// Не запущен — стартуем сами
 		fmt.Println("  🐍 Запуск Python API...")
 
 		workDir, _ := os.Getwd()
 		pythonScript := filepath.Join(workDir, "Python", "app.py")
-		fmt.Println("  🐛 Путь к Python:", pythonScript)
-		fmt.Println("  🐛 Путь к Python:", pythonScript) // <- добавь
+
 		cmd := exec.Command("python", pythonScript)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+		}
 
 		if err := cmd.Start(); err != nil {
-			fmt.Println("  ❌ Не удалось запустить Python:")
-			fmt.Println("     ", err)
+			fmt.Println("  ❌ Не удалось запустить Python:", err)
 			fmt.Println("  💡 Запустите вручную: cd Python && python app.py")
 		} else {
-			// Ждём пока поднимется — максимум 60 секунд
 			started := false
 			for i := 0; i < 60; i++ {
 				time.Sleep(1 * time.Second)
@@ -47,16 +46,16 @@ func main() {
 
 			if started {
 				fmt.Println("  ✅ Python API готов!")
-				// Убиваем Python при выходе
 				defer cmd.Process.Kill()
 			} else {
 				fmt.Println("  ❌ Python API не запустился за 60 секунд")
+				fmt.Println("  💡 Запустите вручную: cd Python && python app.py")
 				cmd.Process.Kill()
 			}
 		}
 	}
-	p := termenv.ColorProfile()
 
+	p := termenv.ColorProfile()
 	colorPrompt := p.Color("#00BFFF")
 	colorBg := p.Color("#0D1117")
 	colorError := p.Color("#FF6B6B")
@@ -70,7 +69,6 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
-		// Строка ввода с подложкой
 		prompt := termenv.String(" > ").Foreground(colorPrompt).Background(colorBg).Bold()
 		inputArea := termenv.String("                                                  ").Background(colorBg)
 		fmt.Print(prompt, inputArea, "\r", prompt)
@@ -91,10 +89,10 @@ func main() {
 		command := parts[0]
 
 		switch command {
-		case "help":
+		case "/help":
 			printHelp(p)
 
-		case "check":
+		case "/check":
 			response := extractFlag(parts, "-r")
 			if response == "" {
 				fmt.Println(termenv.String("  ❌ Укажите ответ ИИ: /check -r \"текст ответа\"").Foreground(colorError))
@@ -102,10 +100,10 @@ func main() {
 			}
 			runFull(response, p)
 
-		case "verify":
+		case "/verify":
 			runVerify(p)
 
-		case "exit", "quit":
+		case "/exit", "/quit":
 			fmt.Println(termenv.String("\n  До свидания! 👋\n").Foreground(colorDim))
 			os.Exit(0)
 
@@ -117,8 +115,6 @@ func main() {
 	}
 }
 
-// splitArgs разбивает строку с учётом кавычек
-// /check -r "текст с пробелами" → ["/check", "-r", "текст с пробелами"]
 func splitArgs(input string) []string {
 	var parts []string
 	var current strings.Builder
@@ -148,7 +144,6 @@ func splitArgs(input string) []string {
 	return parts
 }
 
-// extractFlag извлекает значение флага
 func extractFlag(parts []string, flag string) string {
 	for i, part := range parts {
 		if part == flag && i+1 < len(parts) {
@@ -158,7 +153,6 @@ func extractFlag(parts []string, flag string) string {
 	return ""
 }
 
-// printHelp выводит список команд
 func printHelp(p termenv.Profile) {
 	colorCmd := p.Color("#00BFFF")
 	colorFlag := p.Color("#79C0FF")
@@ -174,6 +168,7 @@ func printHelp(p termenv.Profile) {
 	fmt.Print(termenv.String(" -r").Foreground(colorFlag))
 	fmt.Println(termenv.String(" \"<ответ ИИ>\"").Foreground(colorDim))
 	fmt.Println(termenv.String("      Полный пайплайн: извлечь утверждения и проверить факты").Foreground(colorDesc))
+	fmt.Println(termenv.String("      Объяснения автоматически переводятся на русский").Foreground(colorDim))
 	fmt.Println(termenv.String("      Пример: /check -r \"Куликовская битва была в 1480 году\"").Foreground(colorDim))
 	fmt.Println()
 	fmt.Println(termenv.String("  /verify").Foreground(colorCmd))
@@ -187,12 +182,11 @@ func printHelp(p termenv.Profile) {
 	fmt.Println()
 	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorDim))
 	fmt.Println(termenv.String("  Переменные окружения:").Foreground(colorDim))
-	fmt.Println(termenv.String("    GEMINI_API_KEY  — для извлечения утверждений (langextract)").Foreground(colorDim))
-	fmt.Println(termenv.String("    JINA_API_KEY    — для проверки фактов (Jina Grounding API)").Foreground(colorDim))
+	fmt.Println(termenv.String("    GEMINI_API_KEY  — для извлечения утверждений").Foreground(colorDim))
+	fmt.Println(termenv.String("    JINA_API_KEY    — для проверки фактов").Foreground(colorDim))
 	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorDim))
 }
 
-// runVerify проверяет готовность системы
 func runVerify(p termenv.Profile) {
 	colorOk := p.Color("#3FB950")
 	colorErr := p.Color("#FF6B6B")
@@ -226,7 +220,6 @@ func runVerify(p termenv.Profile) {
 	}
 }
 
-// runFull запускает полный пайплайн
 func runFull(response string, p termenv.Profile) {
 	colorErr := p.Color("#FF6B6B")
 	colorOk := p.Color("#3FB950")

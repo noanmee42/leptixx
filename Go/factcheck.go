@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 )
 
@@ -77,22 +76,16 @@ func (j *JinaClient) checkViaGet(claim string) ([]byte, int, error) {
 }
 
 func (j *JinaClient) CheckClaim(claim string) (FactCheckResult, error) {
-	// Сначала пробуем POST с json.Marshal — корректно передаёт кириллицу
 	body, status, err := j.checkViaPost(claim)
 	if err != nil {
 		return FactCheckResult{Claim: claim}, fmt.Errorf("ошибка POST запроса: %w", err)
 	}
 
-	// Если POST вернул 422 — fallback на GET (для английских утверждений)
-	// Если POST вернул 422 — fallback на GET
 	if status == 422 {
-		fmt.Printf("   ⚠️  POST 422, тело: %s\n", string(body))
 		body, status, err = j.checkViaGet(claim)
 		if err != nil {
-			fmt.Printf("   ⚠️  GET ошибка: %v\n", err)
 			return FactCheckResult{Claim: claim}, fmt.Errorf("ошибка GET: %w", err)
 		}
-		fmt.Printf("   ⚠️  GET статус: %d, тело: %s\n", status, string(body))
 	}
 
 	if status != http.StatusOK {
@@ -116,8 +109,12 @@ func (j *JinaClient) CheckClaim(claim string) (FactCheckResult, error) {
 		return FactCheckResult{Claim: claim}, fmt.Errorf("ошибка парсинга: %w", err)
 	}
 
-	geminiKey := os.Getenv("GEMINI_API_KEY")
-	translatedReason := translateToRussian(jinaResponse.Data.Reason, geminiKey)
+	reason := jinaResponse.Data.Reason
+	if reason != "" {
+		if translated := translateViaMyMemory(reason); translated != "" {
+			reason = translated
+		}
+	}
 
 	var sourceURL, sourceQuote string
 	for _, ref := range jinaResponse.Data.References {
@@ -137,7 +134,7 @@ func (j *JinaClient) CheckClaim(claim string) (FactCheckResult, error) {
 		Found:      true,
 		Result:     jinaResponse.Data.Result,
 		Factuality: jinaResponse.Data.Factuality,
-		Reason:     translatedReason,
+		Reason:     reason,
 		ReviewURL:  sourceURL,
 		KeyQuote:   sourceQuote,
 		Confidence: jinaResponse.Data.Factuality,
@@ -181,52 +178,49 @@ func BuildSummary(results []FactCheckResult) ResultSummary {
 	return summary
 }
 
-func translateToRussian(text string, geminiKey string) string {
-	if text == "" || geminiKey == "" {
-		return text
+// translateViaMyMemory — бесплатный перевод без ключа и регистрации
+// Лимит: 5000 символов/день на IP
+func translateViaMyMemory(text string) string {
+	if text == "" {
+		return ""
 	}
 
-	requestBody := map[string]interface{}{
-		"contents": []map[string]interface{}{
-			{
-				"parts": []map[string]string{
-					{"text": "Переведи на русский язык, только перевод без пояснений: " + text},
-				},
-			},
-		},
-	}
+	params := url.Values{}
+	params.Set("q", text)
+	params.Set("langpair", "en|ru")
 
-	jsonData, err := json.Marshal(requestBody)
+	apiURL := "https://api.mymemory.translated.net/get?" + params.Encode()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(apiURL)
 	if err != nil {
-		return text
-	}
-
-	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=" + geminiKey
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return text
+		return ""
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
 
 	var result struct {
-		Candidates []struct {
-			Content struct {
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-			} `json:"content"`
-		} `json:"candidates"`
+		ResponseData struct {
+			TranslatedText string `json:"translatedText"`
+		} `json:"responseData"`
+		ResponseStatus int `json:"responseStatus"`
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		return text
+		return ""
 	}
 
-	if len(result.Candidates) > 0 && len(result.Candidates[0].Content.Parts) > 0 {
-		return result.Candidates[0].Content.Parts[0].Text
+	if result.ResponseStatus == 200 {
+		return result.ResponseData.TranslatedText
 	}
 
-	return text
+	return ""
 }
