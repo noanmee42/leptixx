@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -28,10 +29,22 @@ func NewJinaClient(apiKey string) *JinaClient {
 	}
 }
 
+// sanitizeClaim убирает паттерны которые ломают парсер Jina
+// Jina падает с 422 когда в утверждении есть "— число" или "слово: формула"
+func sanitizeClaim(claim string) string {
+	// Заменяем тире на "равно" или "является"
+	claim = strings.ReplaceAll(claim, " — ", " равно ")
+	claim = strings.ReplaceAll(claim, " – ", " равно ")
+	// Убираем двоеточие с формулой (Jina не любит "слово: буква = выражение")
+	claim = strings.ReplaceAll(claim, ": ", " — ")
+	return strings.TrimSpace(claim)
+}
+
 func (j *JinaClient) checkViaPost(claim string) ([]byte, int, error) {
 	type jinaRequest struct {
 		Statement string `json:"statement"`
 	}
+
 	jsonData, err := json.Marshal(jinaRequest{Statement: claim})
 	if err != nil {
 		return nil, 0, err
@@ -76,13 +89,16 @@ func (j *JinaClient) checkViaGet(claim string) ([]byte, int, error) {
 }
 
 func (j *JinaClient) CheckClaim(claim string) (FactCheckResult, error) {
-	body, status, err := j.checkViaPost(claim)
+	// Санитизируем перед отправкой
+	sanitized := sanitizeClaim(claim)
+
+	body, status, err := j.checkViaPost(sanitized)
 	if err != nil {
 		return FactCheckResult{Claim: claim}, fmt.Errorf("ошибка POST запроса: %w", err)
 	}
 
 	if status == 422 {
-		body, status, err = j.checkViaGet(claim)
+		body, status, err = j.checkViaGet(sanitized)
 		if err != nil {
 			return FactCheckResult{Claim: claim}, fmt.Errorf("ошибка GET: %w", err)
 		}
@@ -130,7 +146,7 @@ func (j *JinaClient) CheckClaim(claim string) (FactCheckResult, error) {
 	}
 
 	return FactCheckResult{
-		Claim:      claim,
+		Claim:      claim, // показываем оригинал пользователю
 		Found:      true,
 		Result:     jinaResponse.Data.Result,
 		Factuality: jinaResponse.Data.Factuality,
