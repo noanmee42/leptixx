@@ -43,12 +43,12 @@ func printResults(claimsData ClaimsData, results []FactCheckResult) {
 	colorText := p.Color("#E6EDF3")
 
 	fmt.Println()
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorHeader))
+	fmt.Println(termenv.String("--------------------------------------------").Foreground(colorHeader))
 	fmt.Println(termenv.String("            РЕЗУЛЬТАТЫ ПРОВЕРКИ             ").Foreground(colorText))
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorHeader))
+	fmt.Println(termenv.String("--------------------------------------------").Foreground(colorHeader))
 
 	fmt.Printf("\n  💬 Ответ: %s\n", claimsData.Response)
-	fmt.Println(termenv.String("\n  ──────────────────────────────────────────").Foreground(colorDim))
+	fmt.Println(termenv.String("\n ").Foreground(colorDim))
 
 	for i, result := range results {
 		fmt.Printf("\n  [%d] %s\n", i+1, result.Claim)
@@ -75,9 +75,9 @@ func printResults(claimsData ClaimsData, results []FactCheckResult) {
 	summary := BuildSummary(results)
 
 	fmt.Println()
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorHeader))
-	fmt.Println(termenv.String("                   СВОДКА                   ").Foreground(colorText))
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorHeader))
+	fmt.Println(termenv.String("--------------------------------------------").Foreground(colorHeader))
+	fmt.Println(termenv.String("                   ВЫВОДЫ                   ").Foreground(colorText))
+	fmt.Println(termenv.String("--------------------------------------------").Foreground(colorHeader))
 	fmt.Printf("  📊 Всего утверждений:      %d\n", summary.TotalClaims)
 	fmt.Println(termenv.String(fmt.Sprintf("  ✅ Подтверждено:            %d", summary.ClaimsFound)).Foreground(colorOk))
 	fmt.Println(termenv.String(fmt.Sprintf("  ❌ Не подтверждено:         %d", summary.ClaimsNotFound)).Foreground(colorErr))
@@ -87,5 +87,5 @@ func printResults(claimsData ClaimsData, results []FactCheckResult) {
 		fmt.Println(termenv.String(fmt.Sprintf("  ⚠️  Возможных галлюцинаций: %d (%.1f%%)", summary.PotentialHallucinations, pct)).Foreground(colorWarn))
 	}
 
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorHeader))
+	fmt.Println(termenv.String("-----------------------------------------").Foreground(colorHeader))
 }

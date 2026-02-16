@@ -160,14 +160,14 @@ func printHelp(p termenv.Profile) {
 	colorDim := p.Color("#8B949E")
 
 	fmt.Println()
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorDim))
+	fmt.Println(termenv.String("  ------------------------------------------").Foreground(colorDim))
 	fmt.Println(termenv.String("                   КОМАНДЫ                  ").Foreground(colorDesc))
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorDim))
+	fmt.Println(termenv.String("  ------------------------------------------").Foreground(colorDim))
 	fmt.Println()
 	fmt.Print(termenv.String("  /check").Foreground(colorCmd))
 	fmt.Print(termenv.String(" -r").Foreground(colorFlag))
 	fmt.Println(termenv.String(" \"<ответ ИИ>\"").Foreground(colorDim))
-	fmt.Println(termenv.String("      Полный пайплайн: извлечь утверждения и проверить факты").Foreground(colorDesc))
+	fmt.Println(termenv.String("      Извлечь утверждения и проверить факты").Foreground(colorDesc))
 	fmt.Println(termenv.String("      Объяснения автоматически переводятся на русский").Foreground(colorDim))
 	fmt.Println(termenv.String("      Пример: /check -r \"Куликовская битва была в 1480 году\"").Foreground(colorDim))
 	fmt.Println()
@@ -180,11 +180,11 @@ func printHelp(p termenv.Profile) {
 	fmt.Println(termenv.String("  /exit").Foreground(colorCmd))
 	fmt.Println(termenv.String("      Выйти из программы").Foreground(colorDesc))
 	fmt.Println()
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorDim))
+	fmt.Println(termenv.String("  -------------------------------------------").Foreground(colorDim))
 	fmt.Println(termenv.String("  Переменные окружения:").Foreground(colorDim))
 	fmt.Println(termenv.String("    GEMINI_API_KEY  — для извлечения утверждений").Foreground(colorDim))
 	fmt.Println(termenv.String("    JINA_API_KEY    — для проверки фактов").Foreground(colorDim))
-	fmt.Println(termenv.String("  ══════════════════════════════════════════").Foreground(colorDim))
+	fmt.Println(termenv.String(" --------------------------------------------").Foreground(colorDim))
 }
 
 func runVerify(p termenv.Profile) {
