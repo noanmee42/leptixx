@@ -23,7 +23,7 @@ func NewJinaClient(apiKey string) *JinaClient {
 		apiKey:  apiKey,
 		baseURL: "https://g.jina.ai/",
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 120 * time.Second,
 		},
 	}
 }
@@ -156,7 +156,7 @@ func (j *JinaClient) CheckClaims(claims []string) ([]FactCheckResult, error) {
 		}
 
 		if i < len(claims)-1 {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(3000 * time.Millisecond)
 		}
 	}
 
