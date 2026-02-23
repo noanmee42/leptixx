@@ -90,7 +90,7 @@ python app.py
 
 ### Лицензия
 
-Распространяется под лицензией MIT (см. "MIT License")
+Распространяется под лицензией MIT (см. [MIT License](https://github.com/noanmee42/leptixx?tab=MIT-1-ov-file))
 
 ---
 
@@ -179,4 +179,4 @@ python app.py
 
 ### License
 
-See the "MIT License" tab.
+See the [MIT License](https://github.com/noanmee42/leptixx?tab=MIT-1-ov-file) tab.
