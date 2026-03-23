@@ -178,8 +178,7 @@ func BuildSummary(results []FactCheckResult) ResultSummary {
 	return summary
 }
 
-// translateViaMyMemory — бесплатный перевод без ключа и регистрации
-// Лимит: 5000 символов/день на IP
+// перевод
 func translateViaMyMemory(text string) string {
 	if text == "" {
 		return ""

@@ -11,13 +11,13 @@ import (
 	"time"
 )
 
-// PythonClient - HTTP клиент для взаимодействия с Python API
+// HTTP клиент
 type PythonClient struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-// ExtractSaveResponse - ответ от /extract-and-save
+// ExtractSaveResponse. ответ от /extract-and-save
 type ExtractSaveResponse struct {
 	Success     bool     `json:"success"`
 	Filename    string   `json:"filename"`

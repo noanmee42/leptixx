@@ -1,4 +1,4 @@
-# Python/app.py
+
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -10,18 +10,15 @@ from pathlib import Path
 
 from claim_extractor import ClaimExtractor
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Создание FastAPI приложения
 app = FastAPI(
     title="Hallucination Detector API",
     description="API для извлечения и верификации утверждений",
     version="1.0.0"
 )
 
-# Инициализация экстрактора (один раз при старте)
 try:
     extractor = ClaimExtractor()
     logger.info("✓ ClaimExtractor успешно инициализирован")
@@ -30,10 +27,8 @@ except Exception as e:
     extractor = None
 
 
-# === Pydantic модели для валидации ===
 
 class ExtractClaimsRequest(BaseModel):
-    """Запрос на извлечение утверждений"""
     text: str
     query: str = ""  # Опциональное поле для запроса пользователя
     
@@ -47,7 +42,6 @@ class ExtractClaimsRequest(BaseModel):
 
 
 class ExtractClaimsResponse(BaseModel):
-    """Ответ с извлеченными утверждениями"""
     claims: List[str]
     count: int
     
@@ -63,7 +57,6 @@ class ExtractClaimsResponse(BaseModel):
         }
 
 
-# === Endpoints ===
 
 @app.get("/health")
 def health_check():
@@ -76,13 +69,7 @@ def health_check():
 
 @app.post("/extract-claims", response_model=ExtractClaimsResponse)
 def extract_claims_endpoint(request: ExtractClaimsRequest):
-    """
-    Извлекает утверждения из текста
-    
-    - **text**: Входной текст для анализа
-    
-    Возвращает список извлеченных утверждений
-    """
+    # Возвращает список утверждений
     if extractor is None:
         raise HTTPException(
             status_code=500,
@@ -114,14 +101,7 @@ def extract_claims_endpoint(request: ExtractClaimsRequest):
 
 @app.post("/extract-and-save")
 def extract_and_save_endpoint(request: ExtractClaimsRequest):
-    """
-    Извлекает утверждения и сохраняет в JSON файл
-    
-    - **text**: Входной текст для анализа
-    - **query**: Опциональный запрос пользователя
-    
-    Возвращает путь к сохраненному файлу и список утверждений
-    """
+    # Сохраняет в JSON
     if extractor is None:
         raise HTTPException(
             status_code=500,
@@ -148,8 +128,7 @@ def extract_and_save_endpoint(request: ExtractClaimsRequest):
             "claims": claims,
             "count": len(claims)
         }
-        
-        # Создание папки output если её нет
+
         output_dir = Path("../output")
         output_dir.mkdir(exist_ok=True)
         
@@ -178,7 +157,6 @@ def extract_and_save_endpoint(request: ExtractClaimsRequest):
         )
 
 
-# Запуск сервера (если запускаем напрямую)
 if __name__ == "__main__":
     import uvicorn
     
@@ -193,6 +171,6 @@ if __name__ == "__main__":
         "app:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,  # Автоперезагрузка при изменении кода
+        reload=True, 
         log_level="info"
     )

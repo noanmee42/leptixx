@@ -1,6 +1,6 @@
 package main
 
-// ClaimsData - структура JSON файла с утверждениями
+// структура JSON файла с утверждениями
 type ClaimsData struct {
 	Timestamp string   `json:"timestamp"`
 	Query     string   `json:"query"`
@@ -9,7 +9,7 @@ type ClaimsData struct {
 	Count     int      `json:"count"`
 }
 
-// FactCheckResult - результат проверки через Jina Grounding API
+// результат проверки
 type FactCheckResult struct {
 	Claim      string  `json:"claim"`
 	Found      bool    `json:"found"`
@@ -21,7 +21,7 @@ type FactCheckResult struct {
 	KeyQuote   string  `json:"key_quote,omitempty"`
 }
 
-// AnalysisResult - полный результат анализа
+// полный результат анализа
 type AnalysisResult struct {
 	Query            string            `json:"query"`
 	Response         string            `json:"response"`
@@ -30,7 +30,7 @@ type AnalysisResult struct {
 	Summary          ResultSummary     `json:"summary"`
 }
 
-// ResultSummary - сводка результатов
+// сводка результатов
 type ResultSummary struct {
 	TotalClaims             int `json:"total_claims"`
 	ClaimsFound             int `json:"claims_found"`
