@@ -1,5 +1,11 @@
 package main
 
+// одно атомарное утверждение
+type Claim struct {
+	Text    string `json:"text"`
+	Context string `json:"context"`
+}
+
 // структура JSON файла с утверждениями
 type ClaimsData struct {
 	Timestamp string   `json:"timestamp"`
